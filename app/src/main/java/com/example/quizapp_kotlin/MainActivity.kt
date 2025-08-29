@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.start_quiz_filtered_button).setOnClickListener { startQuiz(true) }
 
         // 퀴즈 화면
-        findViewById<Button>(R.id.go_to_main_from_quiz_button).setOnClickListener { showScreen("main") }
+        findViewById<Button>(R.id.go_to_main_from_quiz_button).setOnClickListener { goToTheme(currentSubject) }
         findViewById<Button>(R.id.exit_quiz_button).setOnClickListener { showExitConfirmDialog() }
         findViewById<Button>(R.id.check_answer_button).setOnClickListener { checkAnswer() }
         findViewById<Button>(R.id.show_explanation_button).setOnClickListener { showExplanation() }
@@ -96,6 +96,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.exit_finish_button).setOnClickListener { showExitConfirmDialog() }
         findViewById<Button>(R.id.restart_quiz_button).setOnClickListener { startQuiz() }
         findViewById<Button>(R.id.go_to_main_from_finish_button).setOnClickListener { showScreen("main") }
+        findViewById<Button>(R.id.go_to_theme_from_finish_button).setOnClickListener { goToTheme(currentSubject) }
     }
 
     // 오늘 날짜 키
@@ -229,7 +230,8 @@ class MainActivity : AppCompatActivity() {
         score = 0
         totalQuestions = 0
         usedQuestions.clear()
-        filteredQuestions = questionsDB[currentSubject]?.toMutableList() ?: mutableListOf()
+        // 20문제를 3문제로 임시 변경 적용 250827 "shuffled()?.take(3)?"
+        filteredQuestions = questionsDB[currentSubject]?.shuffled()?.take(20)?.toMutableList() ?: mutableListOf()
 
         if (isFiltered) {
             val selectedLevel = findViewById<Spinner>(R.id.level_list_spinner).selectedItem.toString()
@@ -262,12 +264,15 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.result_text).visibility = View.GONE
         findViewById<TextView>(R.id.explanation_text).visibility = View.GONE
         findViewById<TextView>(R.id.correct_answer_text).visibility = View.GONE
-        findViewById<Button>(R.id.show_explanation_button).visibility = View.GONE
+
+        // 해설보기 버튼을 항상 보이도록 설정
+        findViewById<Button>(R.id.show_explanation_button).visibility = View.VISIBLE
         findViewById<Button>(R.id.next_question_button).visibility = View.GONE
         findViewById<Button>(R.id.finish_quiz_button).visibility = View.GONE
         findViewById<Button>(R.id.check_answer_button).visibility = View.VISIBLE
 
         val availableQuestions = filteredQuestions.filterIndexed { index, _ -> index !in usedQuestions }
+        // 20문제를 3문제로 임시 변경 적용 250827 > 20을 3으로 변경했음
         if (availableQuestions.isEmpty() || totalQuestions >= 20) {
             goToFinish()
             return
@@ -294,12 +299,13 @@ class MainActivity : AppCompatActivity() {
             ?.mapIndexed { index, choice -> index to choice }
             ?.shuffled()
 
-        shuffledChoices?.forEach { (index, choice) ->
+        shuffledChoices?.forEach { (originalIndex, choice) ->
             val btn = Button(this).apply {
-                text = "${index + 1}. $choice"
+                //text = "${index + 1}. $choice"
+                text = choice
                 textSize = 16f
-                tag = index
-                setOnClickListener { onChoiceSelected(this, index) }
+                tag = originalIndex
+                setOnClickListener { onChoiceSelected(this, originalIndex) }
                 setBackgroundColor(ContextCompat.getColor(this@MainActivity, android.R.color.darker_gray))
             }
             choicesContainer.addView(btn)
@@ -381,7 +387,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.correct_answer_text).text = "정답: ${currentQuestion!!.choices[currentQuestion!!.answer]}"
         findViewById<TextView>(R.id.score_display).text = "현재 점수: $score/$totalQuestions (총 20문제)"
 
-        // 해설 버튼을 보이고 해설 텍스트를 표시하도록 수정
+        // 정답 확인 시 해설을 자동으로 보여주는 기능
         showExplanation()
     }
 
